@@ -1,6 +1,6 @@
 # Codeyoung Trial Class Booking
 
-A production-minded take-home implementation for the Codeyoung trial-class booking assignment.
+A production-minded take-home implementation for the Codeyoung trial-class booking assignment. 
 
 **Live demo**
 - Frontend (Vercel): https://codeyoung-task.vercel.app
