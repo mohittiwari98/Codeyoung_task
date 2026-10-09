@@ -1,22 +1,33 @@
 import { fmt } from './tz.js';
 
 // Builds the two messages for a booking: one for the parent, one for the mentor.
+// `params` are the variables available to the EmailJS template ({{student_name}}, {{mentor_name}}, ...).
 export function buildEmails({ booking: b, mentor: m }) {
   const link = b.meetingLink;
+  const parentTime = fmt(b.startMs, b.parentTz);
+  const mentorTime = fmt(b.startMs, m.tz);
+  const shared = {
+    student_name: b.childName,
+    child_name: b.childName,
+    child_age: String(b.childAge),
+    parent_name: b.parentName,
+    mentor_name: m.name,
+    parent_time: parentTime,
+    mentor_time: mentorTime,
+    meeting_link: link,
+  };
   return [
     {
       to: b.parentEmail,
-      toName: b.parentName,
-      subject: `Your Codeyoung trial class: ${fmt(b.startMs, b.parentTz)}`,
-      text: `Hi ${b.parentName},\n\nYour trial class for ${b.childName} (age ${b.childAge}) with ${m.name} is confirmed.\nWhen: ${fmt(b.startMs, b.parentTz)} (your local time)\nJoin: ${link}\n`,
-      link,
+      subject: `Trial Class Confirmed – ${b.childName} with ${m.name}`,
+      text: `Hi ${b.parentName},\n\nYour trial class for ${b.childName} (age ${b.childAge}) with ${m.name} is confirmed.\nWhen: ${parentTime} (your local time)\nJoin: ${link}\n`,
+      params: { ...shared, to_name: b.parentName, class_time: parentTime },
     },
     {
       to: m.email,
-      toName: m.name,
-      subject: `New trial class: ${fmt(b.startMs, m.tz)}`,
-      text: `Hi ${m.name},\n\nYou have a trial class with ${b.parentName} for ${b.childName} (age ${b.childAge}).\nWhen: ${fmt(b.startMs, m.tz)} (your local time)\nParent's local time: ${fmt(b.startMs, b.parentTz)}\nJoin: ${link}\n`,
-      link,
+      subject: `Trial Class Confirmed – ${b.childName} with ${m.name}`,
+      text: `Hi ${m.name},\n\nYou have a trial class with ${b.parentName} for ${b.childName} (age ${b.childAge}).\nWhen: ${mentorTime} (your local time)\nParent's local time: ${parentTime}\nJoin: ${link}\n`,
+      params: { ...shared, to_name: m.name, class_time: mentorTime },
     },
   ];
 }
@@ -52,11 +63,11 @@ export async function send(mail) {
         user_id: cfg.publicKey,
         accessToken: cfg.privateKey, // required when "non-browser applications" are allowed
         template_params: {
+          ...mail.params,
+          email: mail.to,      // the template's "To Email" field is {{email}}
           to_email: mail.to,
-          to_name: mail.toName,
           subject: mail.subject,
           message: mail.text,
-          meeting_link: mail.link,
         },
       }),
     });
