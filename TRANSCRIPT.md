@@ -1532,4 +1532,4 @@ I gave Claude the finished project (a zip) together with the assignment text and
 | Tried UK and US time zones; times look right | ALL CASES PASSES (CHECK MANUALLY BY MOHIT)  |
 | "No mentor available" message shown when a slot is full | ALL CASES PASSES (CHECK MANUALLY BY MOHIT)  |
 | Booked the same child at the same time twice; the second attempt is refused with a clear message | ALL CASES PASSES (CHECK MANUALLY BY MOHIT)  |
-
+###ME:FOUND THAT STMP NOT WORKING IN GLOBAL LEVEL SO I USE BREVO BUT THEN MY ACCOUNT SUSPENEDED,SO I USE EMAILJS FOR EMAIL SEND. 
