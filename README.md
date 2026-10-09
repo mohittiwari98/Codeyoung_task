@@ -2,12 +2,19 @@
 
 A production-minded take-home implementation for the Codeyoung trial-class booking assignment.
 
+**Live demo**
+- Frontend (Vercel): https://codeyoung-task.vercel.app
+- API (Render): https://codeyoung-task.onrender.com (`/api/health` for a health check)
+
+The API runs on Render's free plan, so the first request after a quiet period can take up to a minute while it wakes up.
+
 ## Stack
 - Frontend: React + Vite
 - Backend: Node.js + Express
 - Database: MongoDB + Mongoose
 - Time zones: Luxon + IANA zones
-- Email: Nodemailer (Gmail SMTP or Ethereal fallback)
+- Email: EmailJS (REST API, one template for both parent and mentor)
+- Hosting: Vercel (frontend), Render (backend), MongoDB Atlas (database)
 
 ## Product flow
 1. Parent chooses their time zone (auto-detected) and a date.
@@ -35,7 +42,43 @@ The backend uses three MongoDB constraints: a unique `(mentorId, startMs)` booki
 ## Email and classroom link
 Set `APP_URL` to the URL where the React app is served. The backend generates the demo classroom URL (`<APP_URL>/#/class/<id>`), stores it on the booking, and returns it, so the confirmation page and both emails always show the same link. The classroom is a demo page served by the React app, as the brief allows.
 
-For Gmail, use a Google **App Password**, not your normal Gmail password. If `SMTP_HOST` is empty, the server uses an Ethereal test inbox and logs the preview URL.
+Emails are sent through the [EmailJS](https://www.emailjs.com) REST API from `server/src/emails.js`. The parent and the mentor each get one email from the **same EmailJS template**, sent one after the other (EmailJS allows about one request per second). If `EMAILJS_SERVICE_ID` or `EMAILJS_PUBLIC_KEY` is not set, nothing is sent and the email text is printed to the server console instead, so local development works without any email account.
+
+### EmailJS setup
+1. Create an email service (for example Gmail) under **Email Services** and note its **Service ID**.
+2. Create a template under **Email Templates** and note its **Template ID** (it looks like `template_xxxxxxx`).
+3. Under **Account → General**, copy the **Public Key** and the **Private Key**.
+4. Under **Account → Security**, turn on **Allow EmailJS API for non-browser applications**. Without it the server's calls are rejected with a 403.
+5. Service, template and keys must all belong to the same EmailJS account.
+
+### Template fields
+Set **To Email** to `{{email}}` and the **Subject** to `Trial Class Confirmed – {{student_name}} with {{mentor_name}}`. The body can use any of these variables (the values are different for the parent's and the mentor's copy where noted):
+
+| Variable | Value |
+|---|---|
+| `{{email}}` / `{{to_email}}` | Recipient address |
+| `{{to_name}}` | Recipient name (parent for the parent's copy, mentor for the mentor's copy) |
+| `{{student_name}}` / `{{child_name}}` | Child's name |
+| `{{child_age}}` | Child's age |
+| `{{parent_name}}` | Parent's name |
+| `{{mentor_name}}` | Assigned mentor |
+| `{{class_time}}` | Class time in the **recipient's own** time zone |
+| `{{parent_time}}` / `{{mentor_time}}` | Class time in the parent's / mentor's time zone |
+| `{{meeting_link}}` | Demo classroom link |
+| `{{subject}}` / `{{message}}` | Ready-made subject and plain-text body |
+
+Example body (use the template's **Code Editor** so the HTML is rendered):
+
+```html
+<p>Hi {{to_name}},</p>
+<p>Your trial class for <b>{{student_name}}</b> (age {{child_age}}) with <b>{{mentor_name}}</b> is confirmed.</p>
+<p><b>When:</b> {{class_time}} (your local time)</p>
+<p><a href="{{meeting_link}}">Join the demo class</a></p>
+<p>Please join a few minutes before your scheduled time.</p>
+<p>Best regards,<br>Team Codeyoung</p>
+```
+
+Mentor addresses are seeded as `<name>@mentors.example.com` in `server/src/mentors.js`, which are not real mailboxes. Change them to real addresses to see the mentor's copy arrive.
 
 ## Environment
 Create `server/.env` from `server/.env.example`. Do not commit `.env`. Example:
@@ -46,13 +89,21 @@ PORT=4000
 CLIENT_URL=http://localhost:5173
 APP_URL=http://localhost:5173
 
-# Optional. Leave these out to use the Ethereal test inbox (a preview URL is printed in the server console).
-# SMTP_HOST=smtp.gmail.com
-# SMTP_PORT=587
-# SMTP_USER=your-email@gmail.com
-# SMTP_PASS=your-gmail-app-password
-# MAIL_FROM="Codeyoung <your-email@gmail.com>"
+# Optional. Leave these out and emails are only printed in the server console.
+# EMAILJS_SERVICE_ID=service_xxxxxxx
+# EMAILJS_TEMPLATE_ID=template_xxxxxxx
+# EMAILJS_PUBLIC_KEY=your-public-key
+# EMAILJS_PRIVATE_KEY=your-private-key
 ```
+
+The client reads one optional variable at build time:
+
+```env
+# client/.env (only needed when the API is on a different domain than the frontend)
+VITE_API_URL=https://codeyoung-task.onrender.com
+```
+
+Locally, leave `VITE_API_URL` unset: the Vite dev server proxies `/api` to `http://localhost:4000`.
 
 ## Run locally
 You need Node.js 18 or newer (20+ recommended) and a MongoDB database, either local (`mongod` or Docker) or a free MongoDB Atlas cluster. For Atlas, allow your IP under Network Access and put the connection string in `MONGODB_URI`. The 10 mentors are created automatically on first start.
@@ -78,6 +129,41 @@ cd server
 npm test
 ```
 If `npm test` fails on an older Node version, run `node --test --test-concurrency=1 test/*.test.js` instead.
+
+## Deployment (Render + Vercel + Atlas)
+
+**1. MongoDB Atlas.** Create a free cluster and a database user. Under Network Access, allow `0.0.0.0/0`, because Render's outgoing IP address changes. Copy the connection string.
+
+**2. Backend on Render** (New → Web Service, connect this repo):
+- Root Directory: `server`
+- Build Command: `npm install`
+- Start Command: `npm start`
+- Environment variables:
+
+| Variable | Value |
+|---|---|
+| `NODE_VERSION` | `20` |
+| `MONGODB_URI` | Atlas connection string |
+| `CLIENT_URL` | The Vercel URL, e.g. `https://codeyoung-task.vercel.app` (no trailing slash) |
+| `APP_URL` | The same Vercel URL (used for the classroom link in emails) |
+| `TRUST_PROXY` | `1` (so rate limits see the real client IP behind Render's proxy) |
+| `EMAILJS_SERVICE_ID`, `EMAILJS_TEMPLATE_ID`, `EMAILJS_PUBLIC_KEY`, `EMAILJS_PRIVATE_KEY` | From the EmailJS dashboard |
+
+Do not set `PORT`; Render provides it. Check the deploy by opening `/api/health`, which should return `{"ok":true}`.
+
+**3. Frontend on Vercel** (Add New → Project, connect this repo):
+- Root Directory: `client`
+- Framework: Vite (build `npm run build`, output `dist`)
+- Environment variable: `VITE_API_URL` = the Render URL (no trailing slash)
+
+Vite reads `VITE_API_URL` when it builds, so after changing it, redeploy the project.
+
+**Order matters:** deploy Render first, then Vercel (it needs the Render URL), then go back to Render and set `CLIENT_URL` and `APP_URL` to the Vercel URL. If `CLIENT_URL` is wrong the browser blocks the requests and the booking page shows "Can't reach the server".
+
+**Troubleshooting emails.** The server logs one line per email in Render's logs: `Email to <address>: sent` or `Email to <address> failed: <reason>`.
+- `400 The template ID not found`: `EMAILJS_TEMPLATE_ID` is wrong, or the template is in a different EmailJS account from the service and keys.
+- `403`: **Allow EmailJS API for non-browser applications** is off.
+- `[email not configured]`: `EMAILJS_SERVICE_ID` or `EMAILJS_PUBLIC_KEY` is missing.
 
 ## How the capacity cap and double-booking protection work
 
@@ -140,16 +226,17 @@ The assignment did not ask for any of the items below, so they were left out on 
 - **Bookings are not email-verified**, so anyone can book with someone else's address.
 - **The duplicate check compares text**: the same child with a different email address or a different spelling of the name is treated as a different booking. Email verification would close this.
 - **No cancel/reschedule**: a parent who needs to change a time has to contact support. A booking can't be released from the UI.
-- **Email is fire-and-forget**: a failed send is logged, not retried, and the booking stays valid. Use a queue and a transactional provider (SES, Postmark) rather than Gmail SMTP.
+- **Email is fire-and-forget**: a failed send is logged, not retried, and the booking stays valid. A queue with retries would make delivery reliable. EmailJS's free plan also has a small monthly quota and a roughly one-request-per-second limit; a transactional provider (SES, Postmark) is the better choice at real volume.
 - **The classroom is a demo page**, not a real video room.
 - **No authentication, request logging, monitoring, or data-retention policy** for parent and child details.
-- **Mentor hours are fixed** (09:00-21:00 IST, seeded in `mentors.js`); there is no leave/availability management.
+- **Mentor hours and mentor emails are fixed** (09:00-21:00 IST, placeholder `@mentors.example.com` addresses, seeded in `mentors.js`); there is no leave/availability management.
+- **The free Render plan sleeps when idle**, so the first request after a quiet period is slow.
 - There are server tests (time zones/DST, capacity, concurrency, rate limiting) but no browser UI tests.
 
 ## Security / submission notes
 - Never commit `server/.env` or credentials.
-- Use an App Password for Gmail.
-- Keep the MongoDB URI private.
+- Keep the EmailJS private key and the MongoDB URI private. Put them in Render's environment settings, never in the repo or in chat.
+- If a secret is ever pasted somewhere public, revoke it and create a new one.
 - The included `.env.example` contains placeholders only.
 
 ## AI usage
