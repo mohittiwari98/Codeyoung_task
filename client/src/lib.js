@@ -52,7 +52,7 @@ export function groupSlots(slots, tz) {
 export async function api(path, opts) {
   let r;
   try {
-    r = await fetch('/api' + path, { headers: { 'Content-Type': 'application/json' }, ...opts });
+    r = await fetch((import.meta.env.VITE_API_URL || '').replace(/\/$/, '') + '/api' + path, { headers: { 'Content-Type': 'application/json' }, ...opts });
   } catch {
     throw Object.assign(new Error("Can't reach the server. Check your connection and try again."), { code: 'NETWORK' });
   }
