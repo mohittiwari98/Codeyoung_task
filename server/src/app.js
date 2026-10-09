@@ -4,7 +4,7 @@ import { z } from 'zod';
 import rateLimit from 'express-rate-limit';
 import { DateTime } from 'luxon';
 import { BookingError } from './bookingService.js';
-import { buildEmails, send } from './emails.js';
+import { buildEmails, sendAll } from './emails.js';
 import { abbr, fmt, isValidZone, timeLabel } from './tz.js';
 
 const tzSchema = z.string().refine(isValidZone, 'Unknown time zone');
@@ -66,7 +66,7 @@ export function createApp(service, { limits = {} } = {}) {
         name: body.name, email: body.email, childName: body.childName, childAge: body.childAge,
         tz: body.tz, startMs: Date.parse(body.startUtc),
       });
-      buildEmails(result).forEach((mail) => send(mail));
+      sendAll(buildEmails(result));
       const { booking: b, mentor: m } = result;
       res.status(201).json({
         id: String(b._id), startUtc: new Date(b.startMs).toISOString(), mentorName: m.name, link: b.meetingLink,
