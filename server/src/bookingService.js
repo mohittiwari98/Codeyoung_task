@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { Booking, Mentor, MentorDay } from './models.js';
 import { at, dayRangeMs } from './tz.js';
+import { classUrl } from './links.js';
 
 export const SLOT_MS = 30 * 60 * 1000;
 export const LEAD_MS = 60 * 60 * 1000; // can't book within the next hour
@@ -86,7 +87,7 @@ export function createBookingService({ now = () => Date.now() } = {}) {
         const booking = await Booking.create({
           mentorId: mentor._id, parentName: name, parentEmail: email, childKey, parentTz: tz, childName, childAge, mentorTz: mentor.tz,
           startMs, endMs: startMs + SLOT_MS, mentorLocalDate: date,
-          meetingLink: `${(process.env.APP_URL || 'http://localhost:5173').replace(/\/$/, '')}/#/class/${id}?mentor=${encodeURIComponent(mentor.name)}&start=${startMs}`, 
+          meetingLink: classUrl(id, `mentor=${encodeURIComponent(mentor.name)}&start=${startMs}`),
         });
         return { booking: booking.toObject(), mentor };
       } catch (e) {
@@ -100,5 +101,18 @@ export function createBookingService({ now = () => Date.now() } = {}) {
     throw new BookingError('NO_MENTOR_AVAILABLE', 'No mentor is available at that time.', 409);
   }
 
-  return { listSlots, book };
-}
+  // Read-only schedule for one mentor, looked up by their private token. Includes a class that
+  // started up to 30 min ago so a mentor can still find the class they are in.
+  async function getMentorSchedule(token) {
+    const mentor = await Mentor.findOne({ accessToken: token }).lean();
+    if (!mentor) throw new BookingError('NOT_FOUND', "We couldn't find that schedule. Please use the link from your latest class email.", 404);
+    const nowMs = now();
+    const bookings = await Booking.find({ mentorId: mentor._id, startMs: { $gte: nowMs - SLOT_MS } }).sort({ startMs: 1 }).limit(200).lean();
+    const todayDate = at(nowMs, mentor.tz).toISODate();
+    const dates = [...new Set([todayDate, ...bookings.map((b) => b.mentorLocalDate)])];
+    const days = await MentorDay.find({ mentorId: mentor._id, date: { $in: dates } }).lean();
+    return { mentor, nowMs, todayDate, bookings, dayCounts: Object.fromEntries(days.map((d) => [d.date, d.count])) };
+  }
+
+  return { listSlots, book, getMentorSchedule };
+    }
