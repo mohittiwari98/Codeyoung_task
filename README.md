@@ -242,11 +242,5 @@ The assignment did not ask for any of the items below, so they were left out on 
 - **The free Render plan sleeps when idle**, so the first request after a quiet period is slow.
 - There are server tests (time zones/DST, capacity, concurrency, rate limiting) but no browser UI tests.
 
-## Security / submission notes
-- Never commit `server/.env` or credentials.
-- Keep the EmailJS private key and the MongoDB URI private. Put them in Render's environment settings, never in the repo or in chat.
-- If a secret is ever pasted somewhere public, revoke it and create a new one.
-- The included `.env.example` contains placeholders only.
-
 ## AI usage
 `TRANSCRIPT.md` contains the AI sessions used during development, including the later session that added the duplicate-booking protection and the front-end redesign.
