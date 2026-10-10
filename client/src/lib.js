@@ -108,3 +108,6 @@ export function parseRoute(hash) {
 
 // ---- Mentor schedule link: #/mentor/<32-char token> ----
 export const parseMentorRoute = (hash) => /^#\/mentor\/([a-f0-9]{32})$/.exec(hash || '')?.[1] ?? null;
+
+// ---- Dashboard: #/dashboard ----
+export const isDashboardRoute = (hash) => /^#\/dashboard\/?$/.test(hash || '');
