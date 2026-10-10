@@ -1533,3 +1533,18 @@ I gave Claude the finished project (a zip) together with the assignment text and
 | "No mentor available" message shown when a slot is full | ALL CASES PASSES (CHECK MANUALLY BY MOHIT)  |
 | Booked the same child at the same time twice; the second attempt is refused with a clear message | ALL CASES PASSES (CHECK MANUALLY BY MOHIT)  |
 ###ME:FOUND THAT STMP NOT WORKING IN GLOBAL LEVEL SO I USE BREVO BUT THEN MY ACCOUNT SUSPENEDED,SO I USE EMAILJS FOR EMAIL SEND. 
+###ME: How i now how much classes assign to mentor
+###AI:There are three ways to see how many classes each mentor has.
+
+1. The mentor page (easiest)
+
+Open https://codeyoung-task.vercel.app/#/mentor/TOKEN, with the mentor’s accessToken in place of TOKEN.
+The “Today’s load” card shows “x of 2” for today. Each day heading shows that day’s count, and the list shows each class with time, child and parent.
+You’d have to open it separately for each mentor.
+###ME:mentor page is small and read-only, which fits “what you do and don’t build”. An admin page would not add much, so skip it. How i see it
+###AI:Open the mentor page with a link that contains the mentor’s private token. Your database holds the token, so you copy it from there.
+
+On your phone, open cloud.mongodb.com and log in. Go to your cluster and tap Browse Collections.
+Open the mentors collection. Find the document named Vihaan Sharma, since he got your test booking.
+Copy his accessToken value. It’s 32 letters and numbers, for example a3f9….
+###ME: Thank you for your help...
