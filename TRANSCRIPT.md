@@ -2,7 +2,8 @@
 
 **Candidate:** Mohit Tiwari
 **Project:** Trial Class Appointment Booking System (Codeyoung Full-Stack Engineer assignment)
-**Stack:** React (Vite) + Tailwind, Node.js + Express, MongoDB (Mongoose), Luxon, Zod, Nodemailer
+**Stack:** React (Vite), Node.js + Express, MongoDB (Mongoose), Luxon, EmailJS (confirmation emails), hosted on Vercel, Render and MongoDB Atlas
+ Node mailer
 
 ## About this file
 
@@ -1520,18 +1521,23 @@ I gave Claude the finished project (a zip) together with the assignment text and
 
 ## Part D: Verification record
 
-<!-- ⚠ BEFORE SUBMITTING: replace each "..." with the real result of running it, then delete this comment. Do not write a result you have not seen. -->
+Results from running the project myself, not written by an AI.
 
 | Check | Result |
 | --- | --- |
-| `cd server && npm test` | ALL CASES PASSES (CHECK MANUALLY BY MOHIT) |
-| `cd client && npm run build` | ALL CASES PASSES (CHECK MANUALLY BY MOHIT)  |
-| Booked a class through the UI end to end | ALL CASES PASSES (CHECK MANUALLY BY MOHIT)  |
-| Server console shows parent and mentor emails with the same classroom link | ALL CASES PASSES (CHECK MANUALLY BY MOHIT)  |
-| Join demo class and Copy link open the built-in classroom | ALL CASES PASSES (CHECK MANUALLY BY MOHIT)  |
-| Tried UK and US time zones; times look right | ALL CASES PASSES (CHECK MANUALLY BY MOHIT)  |
-| "No mentor available" message shown when a slot is full | ALL CASES PASSES (CHECK MANUALLY BY MOHIT)  |
-| Booked the same child at the same time twice; the second attempt is refused with a clear message | ALL CASES PASSES (CHECK MANUALLY BY MOHIT)  |
+| `cd server && npm test` | PASS|
+| `cd client && npm run build` | PASS |
+| Booked a class on the live site (codeyoung-task.vercel.app) | PASS |
+| Parent email received, with the time in the parent's time zone and the class link | PASS |
+| Mentor email received (mentor address set to an inbox I control), with the time in IST and the same class link | PASS|
+| "Join demo class" and "Copy link" open the built-in classroom | PASS|
+| UK and US time zones show correct local times, including dates after the clock changes (UK 25 Oct 2026, US 1 Nov 2026) | PASS |
+| "No mentor available" message shown when a slot is full | PASS |
+| Same child booked at the same time twice: the second attempt is refused with a clear message | PASS |
+
+Known limits: free Render plan sleeps when idle (first request can take up to a minute); emails go through EmailJS free plan limits.
+
+
 ###ME:FOUND THAT STMP NOT WORKING IN GLOBAL LEVEL SO I USE BREVO BUT THEN MY ACCOUNT SUSPENEDED,SO I USE EMAILJS FOR EMAIL SEND. 
 ###ME: How i now how much classes assign to mentor
 ###AI:There are three ways to see how many classes each mentor has.
