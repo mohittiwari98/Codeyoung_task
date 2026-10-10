@@ -5,7 +5,8 @@ import rateLimit from 'express-rate-limit';
 import { DateTime } from 'luxon';
 import { BookingError } from './bookingService.js';
 import { buildEmails, sendAll } from './emails.js';
-import { abbr, fmt, isValidZone, timeLabel } from './tz.js';
+import { abbr, at, fmt, isValidZone, timeLabel } from './tz.js';
+import { MAX_PER_DAY } from './bookingService.js';
 
 const tzSchema = z.string().refine(isValidZone, 'Unknown time zone');
 const slotsQuery = z.object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), tz: tzSchema });
@@ -76,6 +77,30 @@ export function createApp(service, { limits = {} } = {}) {
     } catch (e) { next(e); }
   });
 
+  // Read-only mentor schedule. The 128-bit token in the URL is the only credential (no login by design).
+  app.get('/api/mentor/:token/schedule', limiter(L.read), async (req, res, next) => {
+    try {
+      const token = /^[a-f0-9]{32}$/.test(req.params.token) ? req.params.token : null;
+      if (!token) throw new BookingError('NOT_FOUND', "We couldn't find that schedule. Please use the link from your latest class email.", 404);
+      const { mentor, nowMs, todayDate, bookings, dayCounts } = await service.getMentorSchedule(token);
+      const byDate = new Map();
+      for (const b of bookings) {
+        if (!byDate.has(b.mentorLocalDate)) byDate.set(b.mentorLocalDate, []);
+        byDate.get(b.mentorLocalDate).push({
+          id: String(b._id), startUtc: new Date(b.startMs).toISOString(), time: timeLabel(b.startMs, mentor.tz),
+          parentTime: fmt(b.startMs, b.parentTz), parentName: b.parentName, childName: b.childName, childAge: b.childAge,
+          link: b.meetingLink,
+        });
+      }
+      res.set('Cache-Control', 'no-store');
+      res.json({
+        mentor: { name: mentor.name, tz: mentor.tz, tzAbbr: abbr(at(nowMs, mentor.tz)) },
+        max: MAX_PER_DAY, today: { date: todayDate, count: dayCounts[todayDate] || 0 },
+        days: [...byDate].map(([date, items]) => ({ date, count: dayCounts[date] || items.length, bookings: items })),
+      });
+    } catch (e) { next(e); }
+  });
+
   app.use((err, _req, res, _next) => {
     if (err instanceof z.ZodError) return res.status(400).json({ code: 'VALIDATION_ERROR', message: err.issues[0].message });
     if (err instanceof BookingError) return res.status(err.status).json({ code: err.code, message: err.message });
@@ -83,4 +108,4 @@ export function createApp(service, { limits = {} } = {}) {
     res.status(500).json({ code: 'INTERNAL', message: 'Something went wrong. Please try again.' });
   });
   return app;
-}
+        }
