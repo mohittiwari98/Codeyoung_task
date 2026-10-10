@@ -4,6 +4,7 @@ const { Schema, model } = mongoose;
 export const Mentor = model('Mentor', new Schema({
   name: String,
   email: { type: String, unique: true },
+  accessToken: { type: String, unique: true, sparse: true }, // secret in the mentor's read-only schedule link
   tz: String,
   workStart: Number,
   workEnd: Number,
