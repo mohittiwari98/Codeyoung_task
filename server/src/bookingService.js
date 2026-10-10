@@ -6,6 +6,7 @@ import { classUrl } from './links.js';
 export const SLOT_MS = 30 * 60 * 1000;
 export const LEAD_MS = 60 * 60 * 1000; // can't book within the next hour
 export const MAX_PER_DAY = 2; // per mentor, per mentor-local calendar day
+export const OPS_TZ = 'Asia/Kolkata'; // the day boundary the dashboard reports in (mentors are seeded in IST)
 
 export class BookingError extends Error {
   constructor(code, message, status) { super(message); this.code = code; this.status = status; }
@@ -114,5 +115,29 @@ export function createBookingService({ now = () => Date.now() } = {}) {
     return { mentor, nowMs, todayDate, bookings, dayCounts: Object.fromEntries(days.map((d) => [d.date, d.count])) };
   }
 
-  return { listSlots, book, getMentorSchedule };
-    }
+  // Counts only (no parent or child data): classes per mentor for the next 7 IST days, plus upcoming and all-time totals.
+  // Per-day numbers come from the same MentorDay counters that enforce the 2-a-day cap.
+  async function getMentorStats() {
+    const mentors = await Mentor.find().sort({ name: 1 }).lean();
+    const nowMs = now();
+    const start = at(nowMs, OPS_TZ).startOf('day');
+    const dates = Array.from({ length: 7 }, (_, i) => start.plus({ days: i }).toISODate());
+    const [days, totals] = await Promise.all([
+      MentorDay.find({ date: { $in: dates } }).lean(),
+      Booking.aggregate([{ $group: { _id: '$mentorId', total: { $sum: 1 }, upcoming: { $sum: { $cond: [{ $gte: ['$startMs', nowMs] }, 1, 0] } } } }]),
+    ]);
+    const perDay = new Map(days.map((d) => [`${d.mentorId}:${d.date}`, d.count]));
+    const sums = new Map(totals.map((t) => [String(t._id), t]));
+    return {
+      dates,
+      rows: mentors.map((m) => ({
+        id: String(m._id), name: m.name,
+        days: dates.map((d) => perDay.get(`${m._id}:${d}`) || 0),
+        upcoming: sums.get(String(m._id))?.upcoming || 0,
+        total: sums.get(String(m._id))?.total || 0,
+      })),
+    };
+  }
+
+  return { listSlots, book, getMentorSchedule, getMentorStats };
+}
