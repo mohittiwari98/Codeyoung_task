@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { api, detectTz, longDate, parseRoute, prettyZone, todayIn, ZONES } from './lib.js';
+import { api, detectTz, longDate, parseMentorRoute, parseRoute, prettyZone, todayIn, ZONES } from './lib.js';
 import { BlockMark, Icon, icons, Logo, Stepper } from './components/ui.jsx';
 import DateStrip from './components/DateStrip.jsx';
 import Slots, { EmptyDay, SlotsSkeleton } from './components/Slots.jsx';
 import DetailsForm from './components/DetailsForm.jsx';
 import Success from './components/Success.jsx';
 import Classroom from './components/Classroom.jsx';
+import MentorSchedule from './components/MentorSchedule.jsx';
 
 const PERKS = [
   [icons.clock, '30 minutes, one to one', 'A short live session just for your child'],
@@ -72,6 +73,8 @@ export default function App() {
     } finally { setBusy(false); }
   }
 
+  const mentorToken = parseMentorRoute(hash);
+  if (mentorToken) return <MentorSchedule token={mentorToken} onExit={() => { window.location.hash = ''; }} />;
   const route = parseRoute(hash);
   if (route) return <Classroom route={route} onExit={() => { window.location.hash = ''; }} />;
 
@@ -169,4 +172,4 @@ export default function App() {
       </main>
     </div>
   );
-}
+    }
