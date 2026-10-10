@@ -105,3 +105,6 @@ export function parseRoute(hash) {
   const q = new URLSearchParams(m[2]);
   return { id: m[1], mentor: q.get('mentor') || 'Your mentor', start: q.get('start') };
 }
+
+// ---- Mentor schedule link: #/mentor/<32-char token> ----
+export const parseMentorRoute = (hash) => /^#\/mentor\/([a-f0-9]{32})$/.exec(hash || '')?.[1] ?? null;
