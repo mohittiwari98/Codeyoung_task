@@ -76,3 +76,18 @@ test('mentor email links to the schedule; parent email does not', async () => {
   assert.ok(mentorMail.text.includes(`/#/mentor/${mentor.accessToken}`));
   assert.ok(!parent.text.includes('/#/mentor/'));
 });
+
+test('dashboard stats: per-mentor totals match bookings; the endpoint exposes counts only', async () => {
+  for (let i = 0; i < 20; i++) await svc.book(req(first + i * 30 * 60000));
+  const stats = await svc.getMentorStats();
+  assert.equal(stats.rows.length, 10);
+  assert.equal(stats.dates.length, 7);
+  assert.ok(stats.rows.every((r) => r.total === 2 && r.upcoming === 2));
+
+  const r = await fetch(`${base}/api/dashboard`);
+  assert.equal(r.status, 200);
+  const body = await r.json();
+  assert.equal(body.totals.all, 20);
+  assert.equal(body.totals.capacityPerDay, 20);
+  assert.ok(!/childName|parentName|@/.test(JSON.stringify(body)), 'no personal data on the dashboard');
+});
