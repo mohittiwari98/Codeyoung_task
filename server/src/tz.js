@@ -4,7 +4,8 @@ import { DateTime } from 'luxon';
 export const isValidZone = (z) => typeof z === 'string' && DateTime.local().setZone(z).isValid;
 
 export function abbr(dt) {
-  if (dt.zoneName === 'Asia/Kolkata') return 'IST';
+  // Browsers may report India as the older IANA name 'Asia/Calcutta'; same zone, so same label.
+  if (dt.zoneName === 'Asia/Kolkata' || dt.zoneName === 'Asia/Calcutta') return 'IST';
   if (dt.zoneName === 'Europe/London') return dt.offset === 0 ? 'GMT' : 'BST';
   return dt.offsetNameShort; // EDT, EST, PST...
 }
@@ -22,4 +23,4 @@ export const timeLabel = (ms, zone) => at(ms, zone).toFormat('h:mm a');
 export function dayRangeMs(date, zone) {
   const s = DateTime.fromISO(date, { zone }).startOf('day');
   return [s.toMillis(), s.plus({ days: 1 }).toMillis()];
-}
+    }
