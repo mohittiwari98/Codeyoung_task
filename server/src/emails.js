@@ -1,4 +1,5 @@
 import { fmt } from './tz.js';
+import { mentorScheduleUrl } from './links.js';
 
 // Builds the two messages for a booking: one for the parent, one for the mentor.
 // `params` are the variables available to the EmailJS template ({{student_name}}, {{mentor_name}}, ...).
@@ -6,6 +7,7 @@ export function buildEmails({ booking: b, mentor: m }) {
   const link = b.meetingLink;
   const parentTime = fmt(b.startMs, b.parentTz);
   const mentorTime = fmt(b.startMs, m.tz);
+  const scheduleLink = m.accessToken ? mentorScheduleUrl(m.accessToken) : null;
   const shared = {
     student_name: b.childName,
     child_name: b.childName,
@@ -15,6 +17,7 @@ export function buildEmails({ booking: b, mentor: m }) {
     parent_time: parentTime,
     mentor_time: mentorTime,
     meeting_link: link,
+    schedule_link: scheduleLink || '',
   };
   return [
     {
@@ -26,7 +29,7 @@ export function buildEmails({ booking: b, mentor: m }) {
     {
       to: m.email,
       subject: `Trial Class Confirmed – ${b.childName} with ${m.name}`,
-      text: `Hi ${m.name},\n\nYou have a trial class with ${b.parentName} for ${b.childName} (age ${b.childAge}).\nWhen: ${mentorTime} (your local time)\nParent's local time: ${parentTime}\nJoin: ${link}\n`,
+      text: `Hi ${m.name},\n\nYou have a trial class with ${b.parentName} for ${b.childName} (age ${b.childAge}).\nWhen: ${mentorTime} (your local time)\nParent's local time: ${parentTime}\nJoin: ${link}\n${scheduleLink ? `All your classes: ${scheduleLink}\n` : ''}`,
       params: { ...shared, to_name: m.name, class_time: mentorTime },
     },
   ];
