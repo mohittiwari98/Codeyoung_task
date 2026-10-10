@@ -6,7 +6,7 @@ import { DateTime } from 'luxon';
 import { BookingError } from './bookingService.js';
 import { buildEmails, sendAll } from './emails.js';
 import { abbr, at, fmt, isValidZone, timeLabel } from './tz.js';
-import { MAX_PER_DAY } from './bookingService.js';
+import { MAX_PER_DAY, OPS_TZ } from './bookingService.js';
 
 const tzSchema = z.string().refine(isValidZone, 'Unknown time zone');
 const slotsQuery = z.object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), tz: tzSchema });
@@ -101,6 +101,21 @@ export function createApp(service, { limits = {} } = {}) {
     } catch (e) { next(e); }
   });
 
+  // Operations view: classes per mentor. Counts only, no personal data, so no login (see README).
+  app.get('/api/dashboard', limiter(L.read), async (_req, res, next) => {
+    try {
+      const { dates, rows } = await service.getMentorStats();
+      res.set('Cache-Control', 'no-store');
+      res.json({
+        tz: OPS_TZ, max: MAX_PER_DAY, dates, mentors: rows,
+        totals: {
+          today: rows.reduce((n, r) => n + r.days[0], 0), capacityPerDay: rows.length * MAX_PER_DAY,
+          upcoming: rows.reduce((n, r) => n + r.upcoming, 0), all: rows.reduce((n, r) => n + r.total, 0),
+        },
+      });
+    } catch (e) { next(e); }
+  });
+
   app.use((err, _req, res, _next) => {
     if (err instanceof z.ZodError) return res.status(400).json({ code: 'VALIDATION_ERROR', message: err.issues[0].message });
     if (err instanceof BookingError) return res.status(err.status).json({ code: err.code, message: err.message });
@@ -108,4 +123,4 @@ export function createApp(service, { limits = {} } = {}) {
     res.status(500).json({ code: 'INTERNAL', message: 'Something went wrong. Please try again.' });
   });
   return app;
-        }
+    }
